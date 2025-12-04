@@ -10,7 +10,7 @@ router.post("/predict", verifyToken, async (req, res, next) => {
     // req.body.data: object features
     const resp = await axios.post("http://localhost:8001/predict", {
       data: req.body.data
-    }, { timeout: 5000 });
+    }, { timeout: 60000 });
     return res.json(resp.data);
   } catch (err) {
     const detail = err.response?.data || err.message;
