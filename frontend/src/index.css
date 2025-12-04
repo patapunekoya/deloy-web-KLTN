@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+body {
+    background-color: #fffdfd;
+    
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* phần nội dung chính sẽ chiếm toàn bộ khoảng trống */
+main {
+  flex: 1;
+}
