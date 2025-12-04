@@ -1,47 +1,60 @@
 # ml_service/app.py
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 import joblib
+import os
+import requests
 import numpy as np
 import json
 from pathlib import Path
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 app = FastAPI(title="VN House Price Predictor")
 
-# CORS cho dev (ví dụ FE chạy ở 5173)
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=["*"], # Cho phép tất cả để tránh lỗi khi gọi nội bộ trong Docker
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# === Load model & danh sách cột ===
-MODEL_PATH = Path("house_price_vn_rf.joblib")
+# === CẤU HÌNH MODEL & DOWNLOAD TỰ ĐỘNG ===
+MODEL_PATH = "house_price_vn_rf.joblib"
+# 👇 THAY LINK DƯỚI BẰNG LINK HUGGING FACE CỦA BẠN 👇
+MODEL_URL = "https://huggingface.co/nekoyae2/house-price-model-vn/resolve/main/house_price_vn_rf.joblib"
+
+def load_model_safely():
+    # Nếu file chưa tồn tại thì tải về
+    if not os.path.exists(MODEL_PATH):
+        print(f"Model not found at {MODEL_PATH}. Downloading from Hugging Face...")
+        try:
+            response = requests.get(MODEL_URL)
+            response.raise_for_status() # Báo lỗi nếu link sai (404, etc)
+            with open(MODEL_PATH, "wb") as f:
+                f.write(response.content)
+            print("Download complete!")
+        except Exception as e:
+            print(f"Failed to download model: {e}")
+            raise e
+    
+    print("Loading model...")
+    return joblib.load(MODEL_PATH)
+
+# Load model khi khởi động app
+model = load_model_safely()
+
+# === Load danh sách cột ===
 FEATURES_PATH = Path("feature_columns.json")
-
-model = joblib.load(MODEL_PATH)
-
 with open(FEATURES_PATH, "r", encoding="utf-8") as f:
     feature_columns = json.load(f)
 
-# feature_columns là dict dạng { "City_Code": "City_Code", ... }
 # Lấy thứ tự cột đúng như lúc train
 FEATURE_ORDER = list(feature_columns.keys())
 
-
 # === Pydantic models ===
 class HouseFeatures(BaseModel):
-    # Tên field trong code là python-friendly,
-    # alias là tên đúng trong DataFrame / feature_columns.json
-
     city_code: float = Field(..., alias="City_Code")
     district_code: float = Field(..., alias="District_Code")
     ward_code: float = Field(..., alias="Ward_Code")
@@ -61,30 +74,21 @@ class HouseFeatures(BaseModel):
     furniture_state: float = Field(..., alias="Furniture state")
 
     class Config:
-        # Cho phép truyền dữ liệu bằng alias (tên cột gốc) hoặc tên field
         populate_by_name = True
         allow_population_by_field_name = True
-
 
 class PredictIn(BaseModel):
     features: HouseFeatures
 
-
 class PredictOut(BaseModel):
     predicted_price: float
-
 
 # === Endpoint trả schema cho FE ===
 @app.get("/schema")
 def get_schema():
-    """
-    Trả về danh sách feature theo đúng thứ tự model đang dùng.
-    FE có thể dựa vào đây để build form nhập.
-    """
     return {
         "features": FEATURE_ORDER
     }
-
 
 # === Endpoint predict ===
 @app.post("/predict", response_model=PredictOut)
