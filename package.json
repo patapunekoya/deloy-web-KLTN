@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "type": "module",
-  "scripts": {
-    "dev": "nodemon api/index.js",
+"scripts": {
     "start": "node api/index.js",
-    "build": "npm install && npm install --prefix client && npm run build --prefix client"
-  },
+    "dev": "nodemon api/index.js",
+    "build": "npm install && cd frontend && npm install && npm run build"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
