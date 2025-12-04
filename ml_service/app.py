@@ -23,7 +23,7 @@ app.add_middleware(
 # === CẤU HÌNH MODEL & DOWNLOAD TỰ ĐỘNG ===
 MODEL_PATH = "house_price_vn_rf.joblib"
 # 👇 THAY LINK DƯỚI BẰNG LINK HUGGING FACE CỦA BẠN 👇
-MODEL_URL = "https://huggingface.co/nekoyae2/house_price_vn_rf_rutgon/resolve/main/house_price_vn_rf.joblib"
+MODEL_URL = "https://huggingface.co/nekoyae2/house_sale_deloy/resolve/main/house_price_vn_rf.joblib"
 
 def load_model_safely():
     # Nếu file chưa tồn tại thì tải về
