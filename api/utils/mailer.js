@@ -3,43 +3,34 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Load biến môi trường (Dùng cho local, trên Render nó sẽ tự nhận từ Dashboard)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
-const port = Number(process.env.EMAIL_PORT) || 465;
+// Lấy thông tin từ Env
 const user = process.env.EMAIL_USER;
 const pass = process.env.EMAIL_PASS;
 const from = process.env.EMAIL_FROM || `"HouseSale Support" <${user}>`;
 
-// Kiểm tra cấu hình (Chỉ log cảnh báo thay vì Crash app)
 if (!user || !pass) {
-  console.warn('⚠️ [MAILER] Thiếu EMAIL_USER hoặc EMAIL_PASS. Tính năng gửi mail sẽ không hoạt động.');
+  console.warn('⚠️ [MAILER] Thiếu EMAIL_USER/PASS.');
 }
 
-// Cấu hình Transporter
+// --- THAY ĐỔI Ở ĐÂY: Dùng Port 587 ---
 const transporter = nodemailer.createTransport({
-  host,
-  port,
-  secure: port === 465, // true nếu dùng 465, false nếu dùng 587
+  service: 'gmail', // Dùng service 'gmail' để nó tự cấu hình host/port chuẩn nhất
   auth: {
     user,
     pass,
   },
-  // Quan trọng: Giúp tránh lỗi "Self-signed certificate" trên Render/Cloud
-  tls: {
-    rejectUnauthorized: false,
-  },
+  // Các tùy chọn giúp debug và tránh timeout
+  logger: true, 
+  debug: true, 
 });
 
 export async function sendMail({ to, subject, html, text }) {
   try {
-    // Kiểm tra kỹ trước khi gửi
-    if (!user || !pass) {
-      throw new Error('Chưa cấu hình Email hệ thống.');
-    }
-
+    console.log(`[MAILER] Đang gửi đến: ${to}...`);
+    
     const info = await transporter.sendMail({
       from,
       to,
@@ -48,11 +39,10 @@ export async function sendMail({ to, subject, html, text }) {
       html,
     });
 
-    console.log(`✅ [MAILER] Email sent to ${to}: ${info.messageId}`);
+    console.log(`✅ [MAILER] Thành công: ${info.messageId}`);
     return info;
   } catch (error) {
-    console.error('❌ [MAILER] Failed:', error.message);
-    // Ném lỗi ra để Controller biết mà báo về Frontend
-    throw error; 
+    console.error('❌ [MAILER] Lỗi chi tiết:', error);
+    throw error;
   }
 }
