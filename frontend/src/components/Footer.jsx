@@ -87,7 +87,7 @@ export default function Footer() {
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm h-fit">
           <h3 className="font-bold text-slate-900 text-base mb-2">Đăng ký nhận tin</h3>
           <p className="text-slate-500 mb-4 text-xs font-normal">
-            Nhận thông báo về bất động sản mới nhất và các ưu đãi độc quyền từ PPHouse.
+            Nhận thông báo về trạng thái tin của bạn từ PPHouse.
           </p>
           <form onSubmit={handleSubmit} className="space-y-3">
             <input
