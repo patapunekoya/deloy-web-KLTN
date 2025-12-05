@@ -1,9 +1,9 @@
-# ml_service/app.py
 import joblib
 import os
 import requests
 import numpy as np
 import json
+import gc  # <--- 1. THÊM THƯ VIỆN NÀY
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +14,7 @@ app = FastAPI(title="VN House Price Predictor")
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Cho phép tất cả để tránh lỗi khi gọi nội bộ trong Docker
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,25 +22,35 @@ app.add_middleware(
 
 # === CẤU HÌNH MODEL & DOWNLOAD TỰ ĐỘNG ===
 MODEL_PATH = "house_price_vn_rf.joblib"
-# 👇 THAY LINK DƯỚI BẰNG LINK HUGGING FACE CỦA BẠN 👇
-MODEL_URL = "https://huggingface.co/nekoyae2/house_sale_deloy/resolve/main/house_price_vn_rf.joblib"
+
+# <--- 2. CẬP NHẬT LINK (Thêm ?download=true)
+MODEL_URL = "https://huggingface.co/nekoyae2/house_sale_deloy/resolve/main/house_price_vn_rf.joblib?download=true"
 
 def load_model_safely():
     # Nếu file chưa tồn tại thì tải về
     if not os.path.exists(MODEL_PATH):
         print(f"Model not found at {MODEL_PATH}. Downloading from Hugging Face...")
         try:
-            response = requests.get(MODEL_URL)
-            response.raise_for_status() # Báo lỗi nếu link sai (404, etc)
+            response = requests.get(MODEL_URL, stream=True) # Thêm stream=True cho file lớn
+            response.raise_for_status()
             with open(MODEL_PATH, "wb") as f:
-                f.write(response.content)
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
             print("Download complete!")
         except Exception as e:
             print(f"Failed to download model: {e}")
+            # Xóa file lỗi nếu tải dở dang
+            if os.path.exists(MODEL_PATH):
+                os.remove(MODEL_PATH)
             raise e
     
     print("Loading model...")
-    return joblib.load(MODEL_PATH)
+    loaded_model = joblib.load(MODEL_PATH)
+    
+    # <--- 3. QUAN TRỌNG: Dọn dẹp RAM ngay sau khi load xong
+    gc.collect()
+    print("Model loaded & Memory cleaned.")
+    return loaded_model
 
 # Load model khi khởi động app
 model = load_model_safely()
@@ -75,6 +85,8 @@ class HouseFeatures(BaseModel):
 
     class Config:
         populate_by_name = True
+        # Pydantic V2 dùng 'populate_by_name', V1 dùng 'allow_population_by_field_name'
+        # Để tương thích cả 2, giữ cả 2 dòng này là ổn
         allow_population_by_field_name = True
 
 class PredictIn(BaseModel):
@@ -94,7 +106,12 @@ def get_schema():
 @app.post("/predict", response_model=PredictOut)
 def predict(req: PredictIn):
     # Lấy dict với key là alias (tên cột gốc)
-    feat_dict = req.features.model_dump(by_alias=True)
+    try:
+        # Pydantic V2
+        feat_dict = req.features.model_dump(by_alias=True)
+    except AttributeError:
+        # Fallback cho Pydantic V1 (nếu server cài bản cũ)
+        feat_dict = req.features.dict(by_alias=True)
 
     # Sắp xếp đúng thứ tự feature mà model đã train
     ordered_values = [feat_dict[col] for col in FEATURE_ORDER]
