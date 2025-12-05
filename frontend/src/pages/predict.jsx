@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { DollarSign, MapPin, Bed, Bath, Home } from "lucide-react";
 import regions from "../data/dvhcvn.json";
 
-const PREDICT_URL = "http://localhost:8001/predict";
+const PREDICT_URL = "/api/price/predict";
 
 // Chuẩn hoá tiếng Việt để search không dấu
 const normalizeText = (str) =>
