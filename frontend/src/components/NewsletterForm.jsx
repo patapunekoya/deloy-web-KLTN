@@ -1,5 +1,6 @@
+// frontend/src/components/NewsletterForm.jsx
 import { useState } from 'react';
-import { toast } from 'react-hot-toast'; // Dùng toast để thông báo nổi bật
+import { toast } from 'react-hot-toast'; // Nhớ cài: npm install react-hot-toast
 
 export default function NewsletterForm() {
   const [email, setEmail] = useState('');
@@ -11,8 +12,8 @@ export default function NewsletterForm() {
 
     setLoading(true);
     try {
-      // Gọi trực tiếp vào /api/... (Trình duyệt sẽ tự hiểu là cùng domain hiện tại)
-      // Không cần biến môi trường phức tạp
+      // Gọi trực tiếp api (nhờ proxy/static serving)
+      // Không cần biến môi trường phức tạp, tránh lỗi đường dẫn
       const res = await fetch('/api/newsletter/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -21,15 +22,15 @@ export default function NewsletterForm() {
 
       const data = await res.json();
 
-      if (res.ok && data.success !== false) {
-        toast.success(data.message || 'Đăng ký nhận tin thành công!');
-        setEmail(''); // Xóa ô nhập sau khi thành công
+      if (res.ok && data.success) {
+        toast.success(data.message || 'Đăng ký thành công! Vui lòng kiểm tra email.');
+        setEmail(''); // Xóa ô nhập
       } else {
-        toast.error(data.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+        toast.error(data.message || 'Đăng ký thất bại.');
       }
     } catch (err) {
-      console.error('Newsletter Error:', err);
-      toast.error('Lỗi kết nối đến máy chủ.');
+      console.error('Newsletter error:', err);
+      toast.error('Lỗi kết nối server. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
