@@ -4,7 +4,7 @@ import { verifyToken } from "../utils/verifyUser.js";
 
 const router = express.Router();
 
-router.post("/predict", verifyToken, async (req, res, next) => {
+router.post("/predict", async (req, res, next) => {
   try {
     // 1. Lấy URL từ biến môi trường (đã cấu hình trên Render)
     // Nếu chạy local thì dùng localhost, nếu lên web thì dùng link https
